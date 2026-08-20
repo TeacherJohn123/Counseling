@@ -10,12 +10,23 @@
 <body class="bg-slate-50 text-slate-800 min-h-screen p-4 sm:p-8">
     <div class="max-w-3xl mx-auto bg-white shadow-lg rounded-2xl p-6 sm:p-8 border border-slate-100">
         
-        <!-- 頁首 -->
-        <header class="border-b pb-4 mb-6">
-            <h1 class="text-2xl font-bold text-slate-700 flex items-center gap-2">
-                🌱 學生長期輔導紀錄系統
-            </h1>
-            <p class="text-sm text-slate-500 mt-1">編號匿名管理・AI 智慧潤飾・期末總評自動生成</p>
+        <!-- 頁首與備份按鈕 -->
+        <header class="border-b pb-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-700 flex items-center gap-2">
+                    🌱 學生長期輔導紀錄系統
+                </h1>
+                <p class="text-sm text-slate-500 mt-1">雲端試算表同步・AI 智慧潤飾・期末總評自動生成</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="exportBackup()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg border border-slate-300 transition">
+                    📥 匯出備份
+                </button>
+                <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg border border-slate-300 transition cursor-pointer">
+                    📤 還原備份
+                    <input type="file" id="importFile" accept=".json" onchange="importBackup(event)" class="hidden">
+                </label>
+            </div>
         </header>
 
         <!-- 記錄填寫表單 -->
@@ -54,9 +65,9 @@
             </div>
 
             <div class="flex justify-end space-x-3 pt-4 border-t">
-                <button type="submit" 
+                <button type="submit" id="submitBtn"
                     class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition shadow-sm">
-                    💾 儲存本筆紀錄
+                    💾 儲存並同步至雲端
                 </button>
             </div>
         </form>
@@ -67,14 +78,13 @@
             <div class="flex flex-col sm:flex-row gap-2 mb-4">
                 <input type="text" id="searchId" placeholder="輸入欲查詢的學生編號 (例如 S01)" 
                     class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase">
-                <button type="button" onclick="loadSummary()" 
+                <button type="button" onclick="loadSummary()" id="searchBtn"
                     class="bg-slate-700 hover:bg-slate-800 text-white px-5 py-2 rounded-lg text-sm font-medium transition">
                     載入該生所有紀錄
                 </button>
             </div>
             
             <div class="space-y-4">
-                <!-- 彙整結果顯示盒 -->
                 <div class="relative">
                     <div id="summaryResult" class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 min-h-[120px] whitespace-pre-line">
                         尚無資料，請輸入編號並點擊載入。
@@ -84,7 +94,6 @@
                     </button>
                 </div>
 
-                <!-- 溫暖正向期末總評產出區 -->
                 <div id="termReviewBox" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-slate-700 space-y-2">
                     <div class="font-bold text-amber-800 flex items-center justify-between">
                         <span>🌟 建議期末輔導總評（溫暖正向）</span>
@@ -92,9 +101,7 @@
                             📋 複製總評
                         </button>
                     </div>
-                    <div id="termReviewContent" class="text-amber-900 leading-relaxed bg-white/60 p-3 rounded-lg border border-amber-100">
-                        <!-- 自動生成內容 -->
-                    </div>
+                    <div id="termReviewContent" class="text-amber-900 leading-relaxed bg-white/60 p-3 rounded-lg border border-amber-100"></div>
                 </div>
             </div>
         </section>
@@ -102,7 +109,9 @@
 
     <!-- JavaScript 邏輯控制 -->
     <script>
-        // 初始化載入當下時間
+        // 🔴 請在此處填入你剛才建立的 Google Apps Script 網頁應用程式網址
+        const SCRIPT_URL = '請貼上你的Google_Apps_Script網址';
+
         function updateTime() {
             const now = new Date();
             const formatted = now.getFullYear() + '/' + 
@@ -114,7 +123,6 @@
         }
         updateTime();
 
-        // 智慧潤飾函數（自動轉換為中性、理性、簡明語氣）
         function polishWithAI() {
             const raw = document.getElementById('rawContent').value;
             if (!raw.trim()) {
@@ -128,7 +136,6 @@
             btn.disabled = true;
 
             setTimeout(() => {
-                // 將口語化筆記優化為客觀敘述
                 const cleaned = raw.trim()
                     .replace(/我覺得/g, '')
                     .replace(/好像/g, '顯示出')
@@ -141,79 +148,129 @@
             }, 500);
         }
 
-        // 儲存紀錄至瀏覽器 LocalStorage
-        document.getElementById('counselingForm').addEventListener('submit', function(e) {
+        // 儲存紀錄並同步至 Google 試算表（同時雙軌備份至 LocalStorage）
+        document.getElementById('counselingForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const studentId = document.getElementById('studentId').value.trim().toUpperCase();
             const time = document.getElementById('recordTime').value;
             const content = document.getElementById('polishedContent').value;
 
-            const record = { time, content };
-            
+            const record = { studentId, time, content };
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = '同步儲存中...';
+
+            // 雙軌備份至 LocalStorage
             let allData = JSON.parse(localStorage.getItem('counseling_records') || '{}');
-            if (!allData[studentId]) {
-                allData[studentId] = [];
-            }
-            allData[studentId].push(record);
-            
+            if (!allData[studentId]) allData[studentId] = [];
+            allData[studentId].push({ time, content });
             localStorage.setItem('counseling_records', JSON.stringify(allData));
 
-            alert(`✅ 成功儲存！\n學生編號：${studentId}\n時間：${time}`);
-            
-            document.getElementById('rawContent').value = '';
-            document.getElementById('polishedContent').value = '';
-            updateTime();
+            try {
+                // 發送至 Google 試算表
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(record)
+                });
+
+                alert(`✅ 成功儲存並同步至雲端試算表！\n學生編號：${studentId}\n時間：${time}`);
+                document.getElementById('rawContent').value = '';
+                document.getElementById('polishedContent').value = '';
+                updateTime();
+            } catch (error) {
+                alert('⚠️ 雲端同步失敗，但已備份至本機瀏覽器。');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = '💾 儲存並同步至雲端';
+            }
         });
 
-        // 載入該學生所有期末彙整紀錄與總評
-        function loadSummary() {
+        // 從雲端試算表載入該生所有期末彙整紀錄
+        async function loadSummary() {
             const searchId = document.getElementById('searchId').value.trim().toUpperCase();
             const resultBox = document.getElementById('summaryResult');
             const copyBtn = document.getElementById('copyBtn');
             const termReviewBox = document.getElementById('termReviewBox');
             const termReviewContent = document.getElementById('termReviewContent');
+            const searchBtn = document.getElementById('searchBtn');
 
             if (!searchId) {
                 alert('請先輸入要查詢的學生編號');
                 return;
             }
 
-            let allData = JSON.parse(localStorage.getItem('counseling_records') || '{}');
-            const studentRecords = allData[searchId];
+            searchBtn.disabled = true;
+            searchBtn.innerText = '載入中...';
 
-            if (!studentRecords || studentRecords.length === 0) {
-                resultBox.innerText = `找不到編號 [ ${searchId} ] 的輔導紀錄。`;
-                copyBtn.classList.add('hidden');
-                termReviewBox.classList.add('hidden');
-                return;
+            try {
+                const response = await fetch(`${SCRIPT_URL}?id=${searchId}`);
+                const result = await response.json();
+
+                if (!result.success || result.records.length === 0) {
+                    resultBox.innerText = `找不到編號 [ ${searchId} ] 的輔導紀錄。`;
+                    copyBtn.classList.add('hidden');
+                    termReviewBox.classList.add('hidden');
+                    return;
+                }
+
+                let summaryText = `--- 學生編號 [ ${searchId} ] 期末彙整紀錄 ---\n`;
+                result.records.forEach((item, index) => {
+                    summaryText += `${index + 1}. [${item.time}] ${item.content}\n`;
+                });
+
+                resultBox.innerText = summaryText;
+                copyBtn.classList.remove('hidden');
+
+                const reviewText = `綜觀本學期表現，編號 [ ${searchId} ] 在師長與同儕互動中展現了良好的自我覺察與成長動能。面對各項學習與生活挑戰時，從最初的需要陪伴逐漸轉為能主動溝通、調整步伐，具備穩定的韌性與責任感。期許未來持續保持這份正向態度，迎向更多元的學習收穫！`;
+                termReviewContent.innerText = reviewText;
+                termReviewBox.classList.remove('hidden');
+
+            } catch (error) {
+                resultBox.innerText = '⚠️ 讀取雲端資料失敗，請檢查網路連線。';
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.innerText = '載入該生所有紀錄';
             }
-
-            let summaryText = `--- 學生編號 [ ${searchId} ] 期末彙整紀錄 ---\n`;
-            studentRecords.forEach((item, index) => {
-                summaryText += `${index + 1}. [${item.time}] ${item.content}\n`;
-            });
-
-            resultBox.innerText = summaryText;
-            copyBtn.classList.remove('hidden');
-
-            // 自動生成溫暖正向的期末總評
-            const reviewText = `綜觀本學期表現，編號 [ ${searchId} ] 在師長與同儕互動中展現了良好的自我覺察與成長動能。面對各項學習與生活挑戰時，從最初的需要陪伴逐漸轉為能主動溝通、調整步伐，具備穩定的韌性與責任感。期許未來持續保持這份正向態度，迎向更多元的學習收穫！`;
-            termReviewContent.innerText = reviewText;
-            termReviewBox.classList.remove('hidden');
         }
 
-        // 複製彙整記錄
+        // 匯出備份 (JSON 檔)
+        function exportBackup() {
+            const data = localStorage.getItem('counseling_records') || '{}';
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `counseling_backup_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+        }
+
+        // 匯入還原
+        function importBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    JSON.parse(e.target.result); // 驗證是否為合法 JSON
+                    localStorage.setItem('counseling_records', e.target.result);
+                    alert('✨ 備份還原成功！');
+                } catch (err) {
+                    alert('❌ 檔案格式錯誤，還原失敗。');
+                }
+            };
+            reader.readAsText(file);
+        }
+
         function copySummary() {
-            const text = document.getElementById('summaryResult').innerText;
-            navigator.clipboard.writeText(text).then(() => {
+            navigator.clipboard.writeText(document.getElementById('summaryResult').innerText).then(() => {
                 alert('✨ 已成功複製彙整紀錄！');
             });
         }
 
-        // 複製期末總評
         function copyTermReview() {
-            const text = document.getElementById('termReviewContent').innerText;
-            navigator.clipboard.writeText(text).then(() => {
+            navigator.clipboard.writeText(document.getElementById('termReviewContent').innerText).then(() => {
                 alert('🌟 已成功複製溫暖正向期末總評！');
             });
         }
