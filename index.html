@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>學生長期輔導紀錄系統</title>
-    <!-- 引入 Tailwind CSS -->
+    <!-- 引入 Tailwind CSS 確保排版美觀、手機平板好操作 -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen p-4 sm:p-8">
@@ -15,16 +15,16 @@
             <h1 class="text-2xl font-bold text-slate-700 flex items-center gap-2">
                 🌱 學生長期輔導紀錄系統
             </h1>
-            <p class="text-sm text-slate-500 mt-1">全程採用學生編號管理，結合 AI 智能潤飾與期末一鍵彙整。</p>
+            <p class="text-sm text-slate-500 mt-1">以編號保護隱私，支援隨性筆記 AI 潤飾與期末一鍵彙整。</p>
         </header>
 
-        <!-- 記錄表單 -->
+        <!-- 記錄填寫表單 -->
         <form id="counselingForm" class="space-y-5">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-1">學生編號</label>
                     <input type="text" id="studentId" required placeholder="例如：S01、A12" 
-                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none uppercase">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-1">記錄時間</label>
@@ -49,14 +49,14 @@
 
             <div>
                 <label class="block text-sm font-semibold text-slate-700 mb-1">潤飾後紀錄（客觀專業，可手動微調）</label>
-                <textarea id="polishedContent" rows="4" required placeholder="AI 潤飾後會顯示於此..."
+                <textarea id="polishedContent" rows="4" required placeholder="點擊上方 AI 潤飾或直接在此輸入..."
                     class="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50"></textarea>
             </div>
 
             <div class="flex justify-end space-x-3 pt-4 border-t">
                 <button type="submit" 
                     class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition shadow-sm">
-                    儲存本筆紀錄
+                    💾 儲存本筆紀錄
                 </button>
             </div>
         </form>
@@ -66,7 +66,7 @@
             <h2 class="text-lg font-bold text-slate-700 mb-3">📂 期末彙整與紀錄檢視</h2>
             <div class="flex flex-col sm:flex-row gap-2 mb-4">
                 <input type="text" id="searchId" placeholder="輸入欲查詢的學生編號 (例如 S01)" 
-                    class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase">
                 <button type="button" onclick="loadSummary()" 
                     class="bg-slate-700 hover:bg-slate-800 text-white px-5 py-2 rounded-lg text-sm font-medium transition">
                     載入該生所有紀錄
@@ -98,7 +98,7 @@
         }
         updateTime();
 
-        // 模擬 AI 潤飾功能（未來可替換為實際串接 Google Apps Script + Gemini API）
+        // 模擬 AI 潤飾（套用中性、理性、簡單明瞭原則）
         async function polishWithAI() {
             const raw = document.getElementById('rawContent').value;
             if (!raw.trim()) {
@@ -111,16 +111,16 @@
             loading.classList.remove('hidden');
             btn.disabled = true;
 
-            // 模擬 API 延遲與轉換（此處即為套用中性、理性、簡單明瞭原則）
             setTimeout(() => {
+                // 自動轉化為客觀中性語氣
                 const polished = `【輔導摘要】學生表達：${raw.trim()}。導師已進行傾聽與正向引導，過程平和，學生情緒穩定。`;
                 document.getElementById('polishedContent').value = polished;
                 loading.classList.add('hidden');
                 btn.disabled = false;
-            }, 800);
+            }, 600);
         }
 
-        // 儲存紀錄（目前使用瀏覽器 LocalStorage 進行簡易儲存，確保完全獨立運作）
+        // 儲存紀錄至瀏覽器 LocalStorage
         document.getElementById('counselingForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const studentId = document.getElementById('studentId').value.trim().toUpperCase();
@@ -129,19 +129,17 @@
 
             const record = { time, content };
             
-            // 從 LocalStorage 讀取現有資料
             let allData = JSON.parse(localStorage.getItem('counseling_records') || '{}');
             if (!allData[studentId]) {
                 allData[studentId] = [];
             }
             allData[studentId].push(record);
             
-            // 寫回 LocalStorage
             localStorage.setItem('counseling_records', JSON.stringify(allData));
 
             alert(`✅ 成功儲存！\n學生編號：${studentId}\n時間：${time}`);
             
-            // 清空輸入框並更新時間
+            // 清空原始筆記與潤飾內容，保留編號並更新時間
             document.getElementById('rawContent').value = '';
             document.getElementById('polishedContent').value = '';
             updateTime();
@@ -162,7 +160,7 @@
             const studentRecords = allData[searchId];
 
             if (!studentRecords || studentRecords.length === 0) {
-                resultBox.innerText = `找不到編號 [ ${searchId} ] 的輔導紀錄。`;
+                resultBox.innerText = `找不到編號 [ ${searchId ] 的輔導紀錄。`;
                 copyBtn.classList.add('hidden');
                 return;
             }
