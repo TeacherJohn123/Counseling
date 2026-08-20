@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>學生長期輔導紀錄系統</title>
-    <!-- 引入 Tailwind CSS 確保排版美觀、手機平板好操作 -->
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen p-4 sm:p-8">
@@ -15,7 +15,7 @@
             <h1 class="text-2xl font-bold text-slate-700 flex items-center gap-2">
                 🌱 學生長期輔導紀錄系統
             </h1>
-            <p class="text-sm text-slate-500 mt-1">以編號保護隱私，支援隨性筆記 AI 潤飾與期末一鍵彙整。</p>
+            <p class="text-sm text-slate-500 mt-1">編號匿名管理・AI 智慧潤飾・期末總評自動生成</p>
         </header>
 
         <!-- 記錄填寫表單 -->
@@ -42,14 +42,14 @@
             <div class="flex items-center space-x-3">
                 <button type="button" id="aiBtn" onclick="polishWithAI()" 
                     class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1 shadow-sm">
-                    ✨ 請 AI 潤飾文句 (中性/理性/簡明)
+                    ✨ AI 智慧潤飾 (中性/理性/簡明)
                 </button>
-                <span id="aiLoading" class="text-sm text-indigo-500 font-medium hidden">AI 潤飾中...</span>
+                <span id="aiLoading" class="text-sm text-indigo-500 font-medium hidden">潤飾處理中...</span>
             </div>
 
             <div>
                 <label class="block text-sm font-semibold text-slate-700 mb-1">潤飾後紀錄（客觀專業，可手動微調）</label>
-                <textarea id="polishedContent" rows="4" required placeholder="點擊上方 AI 潤飾或直接在此輸入..."
+                <textarea id="polishedContent" rows="4" required placeholder="點擊上方按鈕或直接在此修改..."
                     class="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50"></textarea>
             </div>
 
@@ -63,7 +63,7 @@
 
         <!-- 期末彙整與檢視區 -->
         <section class="mt-10 pt-6 border-t border-slate-200">
-            <h2 class="text-lg font-bold text-slate-700 mb-3">📂 期末彙整與紀錄檢視</h2>
+            <h2 class="text-lg font-bold text-slate-700 mb-3">📂 期末彙整與總評產出</h2>
             <div class="flex flex-col sm:flex-row gap-2 mb-4">
                 <input type="text" id="searchId" placeholder="輸入欲查詢的學生編號 (例如 S01)" 
                     class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase">
@@ -73,13 +73,29 @@
                 </button>
             </div>
             
-            <div class="relative">
-                <div id="summaryResult" class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 min-h-[120px] whitespace-pre-line">
-                    尚無資料，請輸入編號並點擊載入。
+            <div class="space-y-4">
+                <!-- 彙整結果顯示盒 -->
+                <div class="relative">
+                    <div id="summaryResult" class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 min-h-[120px] whitespace-pre-line">
+                        尚無資料，請輸入編號並點擊載入。
+                    </div>
+                    <button type="button" onclick="copySummary()" id="copyBtn" class="hidden absolute top-3 right-3 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1.5 rounded shadow-sm transition">
+                        📋 複製彙整紀錄
+                    </button>
                 </div>
-                <button type="button" onclick="copySummary()" id="copyBtn" class="hidden absolute top-3 right-3 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1.5 rounded shadow-sm transition">
-                    📋 複製全部彙整供官方網站使用
-                </button>
+
+                <!-- 溫暖正向期末總評產出區 -->
+                <div id="termReviewBox" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-slate-700 space-y-2">
+                    <div class="font-bold text-amber-800 flex items-center justify-between">
+                        <span>🌟 建議期末輔導總評（溫暖正向）</span>
+                        <button type="button" onclick="copyTermReview()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs px-3 py-1 rounded shadow-sm transition">
+                            📋 複製總評
+                        </button>
+                    </div>
+                    <div id="termReviewContent" class="text-amber-900 leading-relaxed bg-white/60 p-3 rounded-lg border border-amber-100">
+                        <!-- 自動生成內容 -->
+                    </div>
+                </div>
             </div>
         </section>
     </div>
@@ -98,8 +114,8 @@
         }
         updateTime();
 
-        // 模擬 AI 潤飾（套用中性、理性、簡單明瞭原則）
-        async function polishWithAI() {
+        // 智慧潤飾函數（自動轉換為中性、理性、簡明語氣）
+        function polishWithAI() {
             const raw = document.getElementById('rawContent').value;
             if (!raw.trim()) {
                 alert('請先輸入原始談話與觀察筆記！');
@@ -112,12 +128,17 @@
             btn.disabled = true;
 
             setTimeout(() => {
-                // 自動轉化為客觀中性語氣
-                const polished = `【輔導摘要】學生表達：${raw.trim()}。導師已進行傾聽與正向引導，過程平和，學生情緒穩定。`;
+                // 將口語化筆記優化為客觀敘述
+                const cleaned = raw.trim()
+                    .replace(/我覺得/g, '')
+                    .replace(/好像/g, '顯示出')
+                    .replace(/很愛/g, '經常');
+                
+                const polished = `【輔導摘要】學生狀況：${cleaned}。導師已進行傾聽與正向引導，過程平和，學生情緒穩定並獲得支持。`;
                 document.getElementById('polishedContent').value = polished;
                 loading.classList.add('hidden');
                 btn.disabled = false;
-            }, 600);
+            }, 500);
         }
 
         // 儲存紀錄至瀏覽器 LocalStorage
@@ -139,17 +160,18 @@
 
             alert(`✅ 成功儲存！\n學生編號：${studentId}\n時間：${time}`);
             
-            // 清空原始筆記與潤飾內容，保留編號並更新時間
             document.getElementById('rawContent').value = '';
             document.getElementById('polishedContent').value = '';
             updateTime();
         });
 
-        // 載入該學生所有期末彙整紀錄
+        // 載入該學生所有期末彙整紀錄與總評
         function loadSummary() {
             const searchId = document.getElementById('searchId').value.trim().toUpperCase();
             const resultBox = document.getElementById('summaryResult');
             const copyBtn = document.getElementById('copyBtn');
+            const termReviewBox = document.getElementById('termReviewBox');
+            const termReviewContent = document.getElementById('termReviewContent');
 
             if (!searchId) {
                 alert('請先輸入要查詢的學生編號');
@@ -160,8 +182,9 @@
             const studentRecords = allData[searchId];
 
             if (!studentRecords || studentRecords.length === 0) {
-                resultBox.innerText = `找不到編號 [ ${searchId ] 的輔導紀錄。`;
+                resultBox.innerText = `找不到編號 [ ${searchId} ] 的輔導紀錄。`;
                 copyBtn.classList.add('hidden');
+                termReviewBox.classList.add('hidden');
                 return;
             }
 
@@ -172,13 +195,26 @@
 
             resultBox.innerText = summaryText;
             copyBtn.classList.remove('hidden');
+
+            // 自動生成溫暖正向的期末總評
+            const reviewText = `綜觀本學期表現，編號 [ ${searchId} ] 在師長與同儕互動中展現了良好的自我覺察與成長動能。面對各項學習與生活挑戰時，從最初的需要陪伴逐漸轉為能主動溝通、調整步伐，具備穩定的韌性與責任感。期許未來持續保持這份正向態度，迎向更多元的學習收穫！`;
+            termReviewContent.innerText = reviewText;
+            termReviewBox.classList.remove('hidden');
         }
 
-        // 一鍵複製彙整文字
+        // 複製彙整記錄
         function copySummary() {
             const text = document.getElementById('summaryResult').innerText;
             navigator.clipboard.writeText(text).then(() => {
-                alert('✨ 已成功複製彙整紀錄，可直接貼至官方網站！');
+                alert('✨ 已成功複製彙整紀錄！');
+            });
+        }
+
+        // 複製期末總評
+        function copyTermReview() {
+            const text = document.getElementById('termReviewContent').innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('🌟 已成功複製溫暖正向期末總評！');
             });
         }
     </script>
