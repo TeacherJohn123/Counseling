@@ -4,23 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>學生長期輔導紀錄系統</title>
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen p-4 sm:p-8">
     <div class="max-w-3xl mx-auto bg-white shadow-lg rounded-2xl p-6 sm:p-8 border border-slate-100">
         
+        <!-- 頁首與雲端狀態提示 -->
         <header class="border-b pb-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-slate-700 flex items-center gap-2">
                     🌱 學生長期輔導紀錄系統
                 </h1>
-                <p class="text-sm text-slate-500 mt-1">雲端 JSON 自動同步・AI 智慧潤飾・期末總評生成</p>
+                <p class="text-sm text-slate-500 mt-1">雲端 JSON 自動同步・期末總評生成</p>
             </div>
             <div id="syncStatus" class="text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full border border-amber-200 self-start sm:self-auto">
                 🔄 正在連線雲端同步...
             </div>
         </header>
 
+        <!-- 記錄填寫表單 -->
         <form id="counselingForm" class="space-y-5">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -36,23 +39,9 @@
             </div>
 
             <div>
-                <label class="block text-sm font-semibold text-slate-700 mb-1">原始談話與觀察筆記（隨性輸入）</label>
-                <textarea id="rawContent" rows="4" required placeholder="輸入老師當下的粗略筆記、對話細節..."
+                <label class="block text-sm font-semibold text-slate-700 mb-1">輔導紀錄內容</label>
+                <textarea id="content" rows="5" required placeholder="請輸入本次輔導與觀察紀錄..."
                     class="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
-            </div>
-
-            <div class="flex items-center space-x-3">
-                <button type="button" id="aiBtn" onclick="polishWithAI()" 
-                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1 shadow-sm">
-                    ✨ AI 智慧潤飾 (中性/理性/簡明)
-                </button>
-                <span id="aiLoading" class="text-sm text-indigo-500 font-medium hidden">潤飾處理中...</span>
-            </div>
-
-            <div>
-                <label class="block text-sm font-semibold text-slate-700 mb-1">潤飾後紀錄（客觀專業，可手動微調）</label>
-                <textarea id="polishedContent" rows="4" required placeholder="點擊上方按鈕或直接在此修改..."
-                    class="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50"></textarea>
             </div>
 
             <div class="flex justify-end space-x-3 pt-4 border-t">
@@ -63,6 +52,7 @@
             </div>
         </form>
 
+        <!-- 期末彙整與檢視區 -->
         <section class="mt-10 pt-6 border-t border-slate-200">
             <h2 class="text-lg font-bold text-slate-700 mb-3">📂 期末彙整與總評產出</h2>
             <div class="flex flex-col sm:flex-row gap-2 mb-4">
@@ -97,25 +87,17 @@
         </section>
     </div>
 
+    <!-- JavaScript 邏輯控制 -->
     <script>
-        // 🔴 請在此處填入您未來建立的 Google Apps Script 網頁應用程式網址 (目前可先留空或隨意填寫測試本地端)
+        // 🔴 請在此處填入您的 Google Apps Script 網頁應用程式網址
         const SCRIPT_URL = '請貼上你的Google_Apps_Script網址';
 
-        // 全域資料快取
         let cloudData = {};
 
-        // 頁面載入時自動從雲端或本機載入資料
+        // 頁面載入時自動從雲端抓取最新 JSON 資料
         window.addEventListener('DOMContentLoaded', async function() {
             updateTime();
             const statusEl = document.getElementById('syncStatus');
-            
-            if (SCRIPT_URL === '請貼上你的Google_Apps_Script網址') {
-                statusEl.className = 'text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-200 self-start sm:self-auto';
-                statusEl.innerText = '💻 目前為本地端測試模式';
-                cloudData = JSON.parse(localStorage.getItem('counseling_fallback') || '{}');
-                return;
-            }
-
             try {
                 const response = await fetch(SCRIPT_URL);
                 const result = await response.json();
@@ -143,60 +125,23 @@
             document.getElementById('recordTime').value = formatted;
         }
 
-        // 本地智慧語意潤飾
-        function polishWithAI() {
-            const raw = document.getElementById('rawContent').value;
-            if (!raw.trim()) {
-                alert('請先輸入原始談話與觀察筆記！');
-                return;
-            }
-
-            const loading = document.getElementById('aiLoading');
-            const btn = document.getElementById('aiBtn');
-            loading.classList.remove('hidden');
-            btn.disabled = true;
-
-            setTimeout(() => {
-                const cleaned = raw.trim()
-                    .replace(/我覺得/g, '')
-                    .replace(/好像/g, '顯示出')
-                    .replace(/很愛/g, '經常');
-                
-                const polished = `【輔導摘要】學生狀況：${cleaned}。導師已進行傾聽與正向引導，過程平和，學生情緒穩定並獲得支持。`;
-                document.getElementById('polishedContent').value = polished;
-                loading.classList.add('hidden');
-                btn.disabled = false;
-            }, 500);
-        }
-
-        // 儲存紀錄：打包成 JSON 並同步至雲端（帶有本機雙軌備份）
+        // 儲存紀錄：打包成整包 JSON 並透過 POST 覆蓋上雲端
         document.getElementById('counselingForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const studentId = document.getElementById('studentId').value.trim().toUpperCase();
             const time = document.getElementById('recordTime').value;
-            const content = document.getElementById('polishedContent').value;
+            const content = document.getElementById('content').value.trim();
 
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            submitBtn.innerText = '正在儲存紀錄...';
+            submitBtn.innerText = '正在同步至雲端 JSON...';
 
             if (!cloudData[studentId]) {
                 cloudData[studentId] = [];
             }
             cloudData[studentId].push({ time, content });
 
-            // 雙軌備份至本機
             localStorage.setItem('counseling_fallback', JSON.stringify(cloudData));
-
-            if (SCRIPT_URL === '請貼上你的Google_Apps_Script網址') {
-                alert(`✅ 本機模擬儲存成功！\n學生編號：${studentId}\n時間：${time}`);
-                document.getElementById('rawContent').value = '';
-                document.getElementById('polishedContent').value = '';
-                updateTime();
-                submitBtn.disabled = false;
-                submitBtn.innerText = '💾 儲存並同步至雲端';
-                return;
-            }
 
             try {
                 await fetch(SCRIPT_URL, {
@@ -205,12 +150,12 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(cloudData)
                 });
+
                 alert(`✅ 成功儲存並同步至雲端 JSON 檔案！\n學生編號：${studentId}\n時間：${time}`);
-                document.getElementById('rawContent').value = '';
-                document.getElementById('polishedContent').value = '';
+                document.getElementById('content').value = '';
                 updateTime();
             } catch (error) {
-                alert('⚠️ 雲端同步發生異常，但已安全備份於本機。');
+                alert('⚠️ 雲端同步發生異常，但已安全暫存於本機。');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerText = '💾 儲存並同步至雲端';
@@ -231,6 +176,7 @@
             }
 
             const studentRecords = cloudData[searchId];
+
             if (!studentRecords || studentRecords.length === 0) {
                 resultBox.innerText = `找不到編號 [ ${searchId} ] 的輔導紀錄。`;
                 copyBtn.classList.add('hidden');
@@ -242,6 +188,7 @@
             studentRecords.forEach((item, index) => {
                 summaryText += `${index + 1}. [${item.time}] ${item.content}\n`;
             });
+
             resultBox.innerText = summaryText;
             copyBtn.classList.remove('hidden');
 
