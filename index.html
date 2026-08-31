@@ -4,19 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>學生長期輔導紀錄系統</title>
-    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 隱藏預設滾動條讓版面更乾淨 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen p-4 sm:p-8">
     <div class="max-w-3xl mx-auto bg-white shadow-lg rounded-2xl p-6 sm:p-8 border border-slate-100">
         
-        <!-- 頁首與雲端狀態提示 -->
+        <!-- 頁首與雲端狀態 -->
         <header class="border-b pb-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-slate-700 flex items-center gap-2">
                     🌱 學生長期輔導紀錄系統
                 </h1>
-                <p class="text-sm text-slate-500 mt-1">雲端 JSON 自動同步・期末總評生成</p>
+                <p class="text-sm text-slate-500 mt-1">多選分發・自訂地點標籤・雲端自動同步</p>
             </div>
             <div id="syncStatus" class="text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full border border-amber-200 self-start sm:self-auto">
                 🔄 正在連線雲端同步...
@@ -24,40 +28,78 @@
         </header>
 
         <!-- 記錄填寫表單 -->
-        <form id="counselingForm" class="space-y-5">
+        <form id="counselingForm" class="space-y-6">
+            
+            <!-- 學生編號網格 (1-29) -->
+            <div>
+                <div class="flex justify-between items-end mb-2">
+                    <label class="block text-sm font-semibold text-slate-700">學生編號（可複選）</label>
+                    <button type="button" onclick="clearStudents()" class="text-xs text-blue-600 hover:text-blue-800">清除選取</button>
+                </div>
+                <div id="studentGrid" class="grid grid-cols-5 sm:grid-cols-8 gap-2">
+                    <!-- JS 動態生成 1~29 號按鈕 -->
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">學生編號</label>
-                    <input type="text" id="studentId" required placeholder="例如：S01、A12" 
-                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none uppercase">
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">事發日期</label>
+                    <input type="date" id="incidentDate" required 
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none text-slate-700">
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">記錄時間</label>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">系統建檔時間</label>
                     <input type="text" id="recordTime" readonly 
-                        class="w-full border border-slate-200 bg-slate-100 rounded-lg px-3 py-2 text-slate-500 cursor-not-allowed">
+                        class="w-full border border-slate-200 bg-slate-100 rounded-lg px-3 py-2 text-slate-500 cursor-not-allowed text-sm">
                 </div>
+            </div>
+
+            <!-- 事發地點標籤 -->
+            <div>
+                <div class="flex justify-between items-end mb-2">
+                    <label class="block text-sm font-semibold text-slate-700">事發地點（可複選）</label>
+                    <button type="button" onclick="toggleEditLocation()" id="editLocBtn" class="text-xs text-slate-500 hover:text-red-600">編輯標籤</button>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-2" id="locationContainer">
+                    <!-- JS 動態生成地點標籤 -->
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <input type="text" id="newLocation" placeholder="新增自訂地點..." 
+                        class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="button" onclick="addLocation()" 
+                        class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg text-sm transition">
+                        ＋新增
+                    </button>
+                </div>
+            </div>
+
+            <!-- 相關人員 -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">事件相關人員（非必填）</label>
+                <input type="text" id="involvedPersons" placeholder="例如：外班學生姓名、科任老師、家長..." 
+                    class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
             </div>
 
             <div>
-                <label class="block text-sm font-semibold text-slate-700 mb-1">輔導紀錄內容</label>
-                <textarea id="content" rows="5" required placeholder="請輸入本次輔導與觀察紀錄..."
+                <label class="block text-sm font-semibold text-slate-700 mb-1">輔導與觀察紀錄</label>
+                <textarea id="content" rows="4" required placeholder="請輸入本次事件經過與輔導紀錄..."
                     class="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
             </div>
 
-            <div class="flex justify-end space-x-3 pt-4 border-t">
+            <div class="flex justify-end pt-4 border-t">
                 <button type="submit" id="submitBtn"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition shadow-sm">
-                    💾 儲存並同步至雲端
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition shadow-sm w-full sm:w-auto">
+                    💾 儲存並分發至所選學生
                 </button>
             </div>
         </form>
 
         <!-- 期末彙整與檢視區 -->
-        <section class="mt-10 pt-6 border-t border-slate-200">
+        <section class="mt-12 pt-6 border-t border-slate-200">
             <h2 class="text-lg font-bold text-slate-700 mb-3">📂 期末彙整與總評產出</h2>
             <div class="flex flex-col sm:flex-row gap-2 mb-4">
-                <input type="text" id="searchId" placeholder="輸入欲查詢的學生編號 (例如 S01)" 
-                    class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase">
+                <input type="text" id="searchId" placeholder="輸入查詢座號 (例如: 01, 15)" 
+                    class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <button type="button" onclick="loadSummary()" id="searchBtn"
                     class="bg-slate-700 hover:bg-slate-800 text-white px-5 py-2 rounded-lg text-sm font-medium transition">
                     載入該生所有紀錄
@@ -67,7 +109,7 @@
             <div class="space-y-4">
                 <div class="relative">
                     <div id="summaryResult" class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 min-h-[120px] whitespace-pre-line">
-                        尚無資料，請輸入編號並點擊載入。
+                        尚無資料，請輸入座號並點擊載入。
                     </div>
                     <button type="button" onclick="copySummary()" id="copyBtn" class="hidden absolute top-3 right-3 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1.5 rounded shadow-sm transition">
                         📋 複製彙整紀錄
@@ -87,36 +129,46 @@
         </section>
     </div>
 
-    <!-- JavaScript 邏輯控制 -->
     <script>
-        // ✅ 已經為您填入正式的後端網址
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPnKBYXwjutBVJAqFZ3nmxgS300uoyUX0jXoLvA8X8Q4_bbpMEa39BqBb3T-ix3IqRyQ/exec';
+        // 🔴 請填入您的 Google Apps Script 網頁應用程式網址
+        const SCRIPT_URL = '請貼上你的Google_Apps_Script網址';
 
         let cloudData = {};
+        
+        // 狀態管理
+        let selectedStudents = new Set();
+        let selectedLocations = new Set();
+        let isEditingLocation = false;
+        
+        // 預設與自訂地點標籤
+        let locations = JSON.parse(localStorage.getItem('custom_locations')) || ['教室', '操場', '走廊', '科任教室', '學務處'];
 
-        // 頁面載入時自動從雲端抓取最新 JSON 資料
         window.addEventListener('DOMContentLoaded', async function() {
-            updateTime();
+            initTime();
+            initStudentGrid();
+            renderLocations();
+            
             const statusEl = document.getElementById('syncStatus');
             try {
                 const response = await fetch(SCRIPT_URL);
                 const result = await response.json();
                 if (result.success) {
                     cloudData = result.data || {};
-                    statusEl.className = 'text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-full border border-green-200 self-start sm:self-auto';
+                    statusEl.className = 'text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-full border border-green-200';
                     statusEl.innerText = '✅ 雲端同步就緒';
-                } else {
-                    throw new Error();
-                }
+                } else throw new Error();
             } catch (err) {
-                statusEl.className = 'text-xs bg-red-50 text-red-700 px-3 py-1.5 rounded-full border border-red-200 self-start sm:self-auto';
+                statusEl.className = 'text-xs bg-red-50 text-red-700 px-3 py-1.5 rounded-full border border-red-200';
                 statusEl.innerText = '⚠️ 雲端連線失敗，將使用離線模式';
                 cloudData = JSON.parse(localStorage.getItem('counseling_fallback') || '{}');
             }
         });
 
-        function updateTime() {
+        function initTime() {
             const now = new Date();
+            // 事發日期預設為今天
+            document.getElementById('incidentDate').value = now.toISOString().split('T')[0];
+            // 系統時間
             const formatted = now.getFullYear() + '/' + 
                 String(now.getMonth() + 1).padStart(2, '0') + '/' + 
                 String(now.getDate()).padStart(2, '0') + ' ' + 
@@ -125,21 +177,138 @@
             document.getElementById('recordTime').value = formatted;
         }
 
-        // 儲存紀錄：打包成整包 JSON 並透過 POST 覆蓋上雲端
+        // 初始化學生網格
+        function initStudentGrid() {
+            const grid = document.getElementById('studentGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 29; i++) {
+                const id = String(i).padStart(2, '0');
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.innerText = id;
+                btn.className = 'py-2 rounded-lg text-sm font-semibold border transition ' + 
+                                'bg-white border-slate-200 text-slate-600 hover:bg-slate-50';
+                btn.onclick = () => toggleStudent(id, btn);
+                grid.appendChild(btn);
+            }
+        }
+
+        function toggleStudent(id, btn) {
+            if (selectedStudents.has(id)) {
+                selectedStudents.delete(id);
+                btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                btn.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+            } else {
+                selectedStudents.add(id);
+                btn.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+                btn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+            }
+        }
+
+        function clearStudents() {
+            selectedStudents.clear();
+            initStudentGrid();
+        }
+
+        // 渲染地點標籤
+        function renderLocations() {
+            const container = document.getElementById('locationContainer');
+            container.innerHTML = '';
+            locations.forEach((loc, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'relative flex items-center';
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.innerText = loc;
+                
+                const isSelected = selectedLocations.has(loc);
+                btn.className = `px-3 py-1.5 rounded-full text-sm border transition ${isSelected ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`;
+                
+                btn.onclick = () => {
+                    if (isEditingLocation) return;
+                    if (selectedLocations.has(loc)) {
+                        selectedLocations.delete(loc);
+                    } else {
+                        selectedLocations.add(loc);
+                    }
+                    renderLocations();
+                };
+
+                wrapper.appendChild(btn);
+
+                // 編輯模式的刪除按鈕
+                if (isEditingLocation) {
+                    btn.classList.add('pr-8', 'opacity-70');
+                    const delBtn = document.createElement('button');
+                    delBtn.type = 'button';
+                    delBtn.innerHTML = '×';
+                    delBtn.className = 'absolute right-1 top-1/2 -translate-y-1/2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600';
+                    delBtn.onclick = () => deleteLocation(index);
+                    wrapper.appendChild(delBtn);
+                }
+
+                container.appendChild(wrapper);
+            });
+            localStorage.setItem('custom_locations', JSON.stringify(locations));
+        }
+
+        function addLocation() {
+            const input = document.getElementById('newLocation');
+            const val = input.value.trim();
+            if (val && !locations.includes(val)) {
+                locations.push(val);
+                selectedLocations.add(val);
+                input.value = '';
+                renderLocations();
+            }
+        }
+
+        function toggleEditLocation() {
+            isEditingLocation = !isEditingLocation;
+            const btn = document.getElementById('editLocBtn');
+            btn.innerText = isEditingLocation ? '完成編輯' : '編輯標籤';
+            btn.className = isEditingLocation ? 'text-xs text-green-600 font-bold' : 'text-xs text-slate-500 hover:text-red-600';
+            renderLocations();
+        }
+
+        function deleteLocation(index) {
+            const loc = locations[index];
+            selectedLocations.delete(loc);
+            locations.splice(index, 1);
+            renderLocations();
+        }
+
+        // 表單送出：打包並分發給多位學生
         document.getElementById('counselingForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const studentId = document.getElementById('studentId').value.trim().toUpperCase();
-            const time = document.getElementById('recordTime').value;
-            const content = document.getElementById('content').value.trim();
+            
+            if (selectedStudents.size === 0) {
+                alert('請至少選擇一位學生！');
+                return;
+            }
+
+            const incidentDate = document.getElementById('incidentDate').value;
+            const recordTime = document.getElementById('recordTime').value;
+            const involved = document.getElementById('involvedPersons').value.trim();
+            const rawText = document.getElementById('content').value.trim();
+            const locs = Array.from(selectedLocations).join('、');
 
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            submitBtn.innerText = '正在同步至雲端 JSON...';
+            submitBtn.innerText = '正在同步至雲端...';
 
-            if (!cloudData[studentId]) {
-                cloudData[studentId] = [];
-            }
-            cloudData[studentId].push({ time, content });
+            // 組裝正式紀錄字串
+            let finalContent = `【事發日期】${incidentDate}\n`;
+            finalContent += `【事發地點】${locs || '未註記'}\n`;
+            if (involved) finalContent += `【相關人員】${involved}\n`;
+            finalContent += `【內容紀錄】${rawText}`;
+
+            // 將資料分發給選中的學生
+            selectedStudents.forEach(studentId => {
+                if (!cloudData[studentId]) cloudData[studentId] = [];
+                cloudData[studentId].push({ time: recordTime, content: finalContent });
+            });
 
             localStorage.setItem('counseling_fallback', JSON.stringify(cloudData));
 
@@ -150,49 +319,57 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(cloudData)
                 });
-
-                alert(`✅ 成功儲存並同步至雲端 JSON 檔案！\n學生編號：${studentId}\n時間：${time}`);
+                alert(`✅ 儲存成功！\n已將紀錄分發給：${Array.from(selectedStudents).join(', ')}`);
+                
+                // 清空表單
+                clearStudents();
+                selectedLocations.clear();
+                renderLocations();
+                document.getElementById('involvedPersons').value = '';
                 document.getElementById('content').value = '';
-                updateTime();
+                initTime();
             } catch (error) {
-                alert('⚠️ 雲端同步發生異常，但已安全暫存於本機。');
+                alert('⚠️ 雲端同步異常，已安全暫存於本機。');
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerText = '💾 儲存並同步至雲端';
+                submitBtn.innerText = '💾 儲存並分發至所選學生';
             }
         });
 
-        // 載入該學生所有紀錄與期末總評
+        // 載入期末紀錄
         function loadSummary() {
-            const searchId = document.getElementById('searchId').value.trim().toUpperCase();
+            let searchId = document.getElementById('searchId').value.trim();
+            // 自動補零以符合格式
+            if (searchId.length === 1) searchId = '0' + searchId;
+            
             const resultBox = document.getElementById('summaryResult');
             const copyBtn = document.getElementById('copyBtn');
             const termReviewBox = document.getElementById('termReviewBox');
             const termReviewContent = document.getElementById('termReviewContent');
 
             if (!searchId) {
-                alert('請先輸入要查詢的學生編號');
+                alert('請輸入座號');
                 return;
             }
 
             const studentRecords = cloudData[searchId];
 
             if (!studentRecords || studentRecords.length === 0) {
-                resultBox.innerText = `找不到編號 [ ${searchId} ] 的輔導紀錄。`;
+                resultBox.innerText = `找不到座號 [ ${searchId} ] 的輔導紀錄。`;
                 copyBtn.classList.add('hidden');
                 termReviewBox.classList.add('hidden');
                 return;
             }
 
-            let summaryText = `--- 學生編號 [ ${searchId} ] 期末彙整紀錄 ---\n`;
+            let summaryText = `--- 座號 [ ${searchId} ] 紀錄彙整 ---\n\n`;
             studentRecords.forEach((item, index) => {
-                summaryText += `${index + 1}. [${item.time}] ${item.content}\n`;
+                summaryText += `📝 紀錄 ${index + 1} (建檔時間: ${item.time})\n${item.content}\n\n`;
             });
 
-            resultBox.innerText = summaryText;
+            resultBox.innerText = summaryText.trim();
             copyBtn.classList.remove('hidden');
 
-            const reviewText = `綜觀本學期表現，編號 [ ${searchId} ] 在師長與同儕互動中展現了良好的自我覺察與成長動能。面對各項學習與生活挑戰時，從最初的需要陪伴逐漸轉為能主動溝通、調整步伐，具備穩定的韌性與責任感。期許未來持續保持這份正向態度，迎向更多元的學習收穫！`;
+            const reviewText = `本學期中，座號 [ ${searchId} ] 展現了值得肯定的自我覺察能力。面對校園生活與人際互動的挑戰時，從最初的需要引導，逐漸轉為能主動溝通與反思，具備了良好的成長韌性。期許未來持續保持正向態度，穩步邁進！`;
             termReviewContent.innerText = reviewText;
             termReviewBox.classList.remove('hidden');
         }
@@ -205,7 +382,7 @@
 
         function copyTermReview() {
             navigator.clipboard.writeText(document.getElementById('termReviewContent').innerText).then(() => {
-                alert('🌟 已成功複製溫暖正向期末總評！');
+                alert('🌟 已成功複製總評！');
             });
         }
     </script>
